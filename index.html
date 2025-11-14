@@ -806,18 +806,17 @@
         // ============= GAME 4: WORDLE =============
         const WORDS = ['SWIFT', 'REACT', 'CODER', 'SNAKE', 'APPLE', 'BRAIN', 'CLOUD', 'DRONE', 'EAGLE', 'FLAME'];
         
-        function initWordle() {
-            gameState = {
-                targetWord: WORDS[Math.floor(Math.random() * WORDS.length)],
-                guesses: Array(6).fill().map(() => ({ letters: Array(5).fill(''), result: Array(5).fill(''))),
-                currentGuess: '',
-                currentRow: 0,
-                gameOver: false
-            };
-            console.log('Target word:', gameState.targetWord); // For testing
-            
-            updateUI();
-        }
+      function initWordle() {
+    gameState = {
+        targetWord: WORDS[Math.floor(Math.random() * WORDS.length)],
+        guesses: Array(6).fill().map(() => ({ letters: Array(5).fill(''), result: Array(5).fill('') })),
+        currentGuess: '',
+        currentRow: 0,
+        gameOver: false
+    };
+    console.log('Target word:', gameState.targetWord);
+    updateUI();
+}
 
         function updateWordle() {
             updateUI();
