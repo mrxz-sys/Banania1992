@@ -152,25 +152,6 @@
         #back-btn:hover {
             background: rgba(255,0,0,1);
         }
-        
-        #settings-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-            z-index: 1000;
-        }
-        
-        #settings-btn:hover {
-            background: rgba(0,0,0,0.9);
-        }
 
         .game-over {
             position: absolute;
@@ -297,13 +278,16 @@
                     <h3>🔤 GAME 4: WORDLE</h3>
                     <p>Guess the word • Unlimited tries • Daily challenge</p>
                 </div>
+                <div class="game-card" id="menu-settings-btn">
+                    <h3>⚙️ SETTINGS</h3>
+                    <p>Customize controls and game options</p>
+                </div>
             </div>
         </div>
 
         <!-- Game Screen -->
         <div id="game-screen">
             <button id="back-btn">← BACK TO MENU</button>
-            <button id="settings-btn">⚙️ SETTINGS</button>
             <canvas id="game-canvas" width="800" height="600"></canvas>
             <div id="game-ui"></div>
             <div id="game-info"></div>
@@ -397,6 +381,18 @@
             }
         };
 
+        // Word List
+        const WORDS = [
+            'SWIFT', 'REACT', 'CODER', 'SNAKE', 'APPLE', 'BRAIN', 'CLOUD', 'DRONE', 
+            'EAGLE', 'FLAME', 'GHOST', 'HUMAN', 'IVORY', 'JUMBO', 'KOALA', 'LEMON',
+            'MAGIC', 'NINJA', 'OCEAN', 'PIANO', 'QUEEN', 'ROBOT', 'SPACE', 'TIGER',
+            'ULTRA', 'VOICE', 'WATER', 'XENON', 'YACHT', 'ZEBRA', 'ALPHA', 'BETA',
+            'GAMMA', 'DELTA', 'OMEGA', 'SIGMA', 'THETA', 'KAPPA', 'LASER', 'MUSIC',
+            'NIGHT', 'PARTY', 'QUICK', 'RIVER', 'STORM', 'TRAIN', 'UNITY', 'VIDEO',
+            'WORLD', 'YOUTH', 'ZESTY', 'ANGEL', 'BEACH', 'CANDY', 'DREAM', 'EARTH',
+            'FRUIT', 'GRAPE', 'HEART', 'IMAGE', 'JUICE', 'KNIFE', 'LIGHT', 'MOUSE'
+        ];
+
         // Check if running in Discord
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('frame_id') || urlParams.get('instance_id')) {
@@ -408,11 +404,11 @@
         function initBreakout() {
             gameState = {
                 paddle: { x: 350, y: 550, width: 100, height: 15, speed: 8 },
-                ball: { x: 400, y: 300, vx: 4, vy: -4, radius: 8 },
+                ball: { x: 400, y: 535, vx: 0, vy: 0, radius: 8, launched: false },
                 bricks: [],
                 lives: 3,
                 score: 0,
-                keys: { left: false, right: false }
+                keys: { left: false, right: false, launch: false }
             };
 
             // Create bricks (8 rows x 10 columns)
@@ -438,45 +434,60 @@
             if (gameState.keys.left && paddle.x > 0) paddle.x -= paddle.speed;
             if (gameState.keys.right && paddle.x < 800 - paddle.width) paddle.x += paddle.speed;
 
-            // Ball movement
-            ball.x += ball.vx;
-            ball.y += ball.vy;
-
-            // Wall collision
-            if (ball.x - ball.radius < 0 || ball.x + ball.radius > 800) ball.vx *= -1;
-            if (ball.y - ball.radius < 0) ball.vy *= -1;
-
-            // Paddle collision
-            if (ball.y + ball.radius > paddle.y && 
-                ball.x > paddle.x && ball.x < paddle.x + paddle.width &&
-                ball.vy > 0) {
-                ball.vy *= -1;
-                // Add angle based on hit position
-                const hitPos = (ball.x - paddle.x) / paddle.width;
-                ball.vx = (hitPos - 0.5) * 10;
+            // Launch ball with space
+            if (!ball.launched && gameState.keys.launch) {
+                ball.vx = 4;
+                ball.vy = -4;
+                ball.launched = true;
+                gameState.keys.launch = false;
             }
 
-            // Brick collision
-            for (let brick of bricks) {
-                if (!brick.alive) continue;
-                if (ball.x + ball.radius > brick.x && ball.x - ball.radius < brick.x + brick.width &&
-                    ball.y + ball.radius > brick.y && ball.y - ball.radius < brick.y + brick.height) {
-                    brick.alive = false;
+            // Keep ball on paddle before launch
+            if (!ball.launched) {
+                ball.x = paddle.x + paddle.width / 2;
+                ball.y = paddle.y - ball.radius;
+            } else {
+                // Ball movement
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+
+                // Wall collision
+                if (ball.x - ball.radius < 0 || ball.x + ball.radius > 800) ball.vx *= -1;
+                if (ball.y - ball.radius < 0) ball.vy *= -1;
+
+                // Paddle collision
+                if (ball.y + ball.radius > paddle.y && 
+                    ball.x > paddle.x && ball.x < paddle.x + paddle.width &&
+                    ball.vy > 0) {
                     ball.vy *= -1;
-                    gameState.score += 10;
+                    const hitPos = (ball.x - paddle.x) / paddle.width;
+                    ball.vx = (hitPos - 0.5) * 10;
                 }
-            }
 
-            // Ball falls
-            if (ball.y > 600) {
-                gameState.lives--;
-                if (gameState.lives <= 0) {
-                    endGame('GAME OVER!', `Score: ${gameState.score}`);
-                } else {
-                    ball.x = 400;
-                    ball.y = 300;
-                    ball.vx = 4;
-                    ball.vy = -4;
+                // Brick collision
+                for (let brick of bricks) {
+                    if (!brick.alive) continue;
+                    if (ball.x + ball.radius > brick.x && ball.x - ball.radius < brick.x + brick.width &&
+                        ball.y + ball.radius > brick.y && ball.y - ball.radius < brick.y + brick.height) {
+                        brick.alive = false;
+                        ball.vy *= -1;
+                        gameState.score += 10;
+                    }
+                }
+
+                // Ball falls
+                if (ball.y > 600) {
+                    gameState.lives--;
+                    if (gameState.lives <= 0) {
+                        endGame('GAME OVER!', `Score: ${gameState.score}`);
+                    } else {
+                        // Reset ball on paddle
+                        ball.x = paddle.x + paddle.width / 2;
+                        ball.y = paddle.y - ball.radius;
+                        ball.vx = 0;
+                        ball.vy = 0;
+                        ball.launched = false;
+                    }
                 }
             }
 
@@ -513,6 +524,13 @@
             ctx.beginPath();
             ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
             ctx.fill();
+
+            // Draw launch instruction
+            if (!gameState.ball.launched) {
+                ctx.fillStyle = '#ffff00';
+                ctx.font = '20px Arial';
+                ctx.fillText('Press SPACE to launch ball', 300, 300);
+            }
         }
 
         // ============= GAME 2: SPACE SHOOTER =============
@@ -576,20 +594,34 @@
                     const dy = asteroids[i].y - bullets[j].y;
                     if (Math.sqrt(dx*dx + dy*dy) < 20) {
                         if (asteroids[i].isBomb) {
-                            // Bomb hit
+                            // Only lose lives if bomb explodes near ship (not when shot)
                             const bombDist = Math.abs(ship.y - asteroids[i].y);
                             if (bombDist < 100) {
                                 gameState.lives -= 2;
                             }
+                            // Always remove bomb when shot
+                            asteroids.splice(i, 1);
+                            bullets.splice(j, 1);
+                            break;
                         } else {
                             // Asteroid destroyed
                             gameState.ammo += 2;
                             gameState.asteroidsDestroyed++;
+                            asteroids.splice(i, 1);
+                            bullets.splice(j, 1);
+                            break;
                         }
-                        asteroids.splice(i, 1);
-                        bullets.splice(j, 1);
-                        break;
                     }
+                }
+
+                // Check if bomb reaches left side without being shot
+                if (asteroids[i] && asteroids[i].isBomb && asteroids[i].x < 100) {
+                    const bombDist = Math.abs(ship.y - asteroids[i].y);
+                    if (bombDist < 100) {
+                        gameState.lives -= 2;
+                    }
+                    asteroids.splice(i, 1);
+                    continue;
                 }
 
                 // Asteroid passed
@@ -658,7 +690,6 @@
                     []               // Tower 3
                 ],
                 dragging: null,
-                dragOffset: { x: 0, y: 0 },
                 moves: 0,
                 timeLeft: 60,
                 startTime: Date.now()
@@ -726,8 +757,8 @@
             if (gameState.dragging) {
                 const ringSize = gameState.dragging.ring;
                 const width = ringSize * 25 + 20;
-                const x = gameState.dragging.x - gameState.dragOffset.x;
-                const y = gameState.dragging.y - gameState.dragOffset.y;
+                const x = gameState.dragging.x;
+                const y = gameState.dragging.y;
                 
                 ctx.fillStyle = colors[ringSize - 1];
                 ctx.fillRect(x - width/2, y, width, 25);
@@ -761,7 +792,9 @@
             const towerIndex = getTowerAt(x, y);
             if (towerIndex === -1 || gameState.towers[towerIndex].length === 0) return;
             
-            const ring = gameState.towers[towerIndex].pop();
+            // Get the top ring from the tower
+            const ring = gameState.towers[towerIndex][gameState.towers[towerIndex].length - 1];
+            
             gameState.dragging = {
                 ring: ring,
                 fromTower: towerIndex,
@@ -769,54 +802,49 @@
                 y: y
             };
             
-            // Calculate offset from center of ring
-            const width = ring * 25 + 20;
-            gameState.dragOffset = {
-                x: x - (150 + towerIndex * 250),
-                y: y - (490 - (gameState.towers[towerIndex].length) * 30)
-            };
+            // Remove from tower immediately when dragging starts
+            gameState.towers[towerIndex].pop();
         }
 
         function dropHanoi(x, y) {
             if (!gameState.dragging) return;
             
             const toTower = getTowerAt(x, y);
-            const fromTower = gameState.dragging.fromTower;
             const ring = gameState.dragging.ring;
             
-            if (toTower !== -1 && toTower !== fromTower) {
-                const toRing = gameState.towers[toTower][gameState.towers[toTower].length - 1];
+            if (toTower !== -1) {
+                const topRing = gameState.towers[toTower].length > 0 
+                    ? gameState.towers[toTower][gameState.towers[toTower].length - 1] 
+                    : null;
                 
                 // Valid move?
-                if (!toRing || ring < toRing) {
+                if (!topRing || ring < topRing) {
                     gameState.towers[toTower].push(ring);
                     gameState.moves++;
                 } else {
                     // Invalid move, return to original tower
-                    gameState.towers[fromTower].push(ring);
+                    gameState.towers[gameState.dragging.fromTower].push(ring);
                 }
             } else {
                 // Dropped outside valid area, return to original tower
-                gameState.towers[fromTower].push(ring);
+                gameState.towers[gameState.dragging.fromTower].push(ring);
             }
             
             gameState.dragging = null;
         }
 
         // ============= GAME 4: WORDLE =============
-        const WORDS = ['SWIFT', 'REACT', 'CODER', 'SNAKE', 'APPLE', 'BRAIN', 'CLOUD', 'DRONE', 'EAGLE', 'FLAME'];
-        
-      function initWordle() {
-    gameState = {
-        targetWord: WORDS[Math.floor(Math.random() * WORDS.length)],
-        guesses: Array(6).fill().map(() => ({ letters: Array(5).fill(''), result: Array(5).fill('') })),
-        currentGuess: '',
-        currentRow: 0,
-        gameOver: false
-    };
-    console.log('Target word:', gameState.targetWord);
-    updateUI();
-}
+        function initWordle() {
+            gameState = {
+                targetWord: WORDS[Math.floor(Math.random() * WORDS.length)],
+                guesses: Array(6).fill().map(() => ({ letters: Array(5).fill(''), result: Array(5).fill('') })),
+                currentGuess: '',
+                currentRow: 0,
+                gameOver: false
+            };
+            console.log('Target word:', gameState.targetWord);
+            updateUI();
+        }
 
         function updateWordle() {
             updateUI();
@@ -1088,7 +1116,9 @@
             document.querySelectorAll('.game-card').forEach(card => {
                 card.addEventListener('click', function() {
                     const gameType = this.getAttribute('data-game');
-                    startGame(gameType);
+                    if (gameType) {
+                        startGame(gameType);
+                    }
                 });
             });
             
@@ -1096,7 +1126,7 @@
             document.getElementById('back-btn').addEventListener('click', backToMenu);
             document.getElementById('play-again-btn').addEventListener('click', restartGame);
             document.getElementById('menu-btn').addEventListener('click', backToMenu);
-            document.getElementById('settings-btn').addEventListener('click', function() {
+            document.getElementById('menu-settings-btn').addEventListener('click', function() {
                 settingsMenu.style.display = 'block';
             });
             document.getElementById('close-settings').addEventListener('click', function() {
@@ -1140,6 +1170,10 @@
                 if (currentGame === 'breakout') {
                     if (e.code === settings.breakout.left) gameState.keys.left = true;
                     if (e.code === settings.breakout.right) gameState.keys.right = true;
+                    if (e.code === 'Space') {
+                        gameState.keys.launch = true;
+                        e.preventDefault();
+                    }
                 } else if (currentGame === 'asteroids') {
                     if (e.code === settings.asteroids.up) gameState.keys.up = true;
                     if (e.code === settings.asteroids.down) gameState.keys.down = true;
@@ -1156,6 +1190,7 @@
                 if (currentGame === 'breakout') {
                     if (e.code === settings.breakout.left) gameState.keys.left = false;
                     if (e.code === settings.breakout.right) gameState.keys.right = false;
+                    if (e.code === 'Space') gameState.keys.launch = false;
                 } else if (currentGame === 'asteroids') {
                     if (e.code === settings.asteroids.up) gameState.keys.up = false;
                     if (e.code === settings.asteroids.down) gameState.keys.down = false;
