@@ -17,6 +17,8 @@
             overflow: hidden;
             width: 100vw;
             height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
         }
         
         #game-container {
@@ -63,6 +65,8 @@
             transition: all 0.3s;
             display: inline-block;
             min-width: 300px;
+            user-select: none;
+            -webkit-user-select: none;
         }
         
         .game-card:hover {
@@ -93,6 +97,7 @@
             border: 3px solid #ffd700;
             background: #000;
             margin: 10px;
+            display: block;
         }
         
         #game-info {
@@ -151,28 +156,43 @@
             border-radius: 10px;
             cursor: pointer;
         }
+        
+        #discord-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #00ff00;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="game-container">
+        <!-- Discord Status Indicator -->
+        <div id="discord-status">Discord Activity</div>
+        
         <!-- Main Menu -->
         <div id="menu">
             <h1>🎮 PRODIGY 2.6 🎮</h1>
             <h2>HACKING SIMULATOR</h2>
             <div style="margin-top: 40px;">
-                <div class="game-card" onclick="startGame('breakout')">
+                <div class="game-card" data-game="breakout">
                     <h3>🧱 GAME 1: BREAKOUT</h3>
                     <p>Break all blocks • 3 Lives • Classic arcade action</p>
                 </div>
-                <div class="game-card" onclick="startGame('asteroids')">
+                <div class="game-card" data-game="asteroids">
                     <h3>🚀 GAME 2: SPACE SHOOTER</h3>
                     <p>Destroy asteroids • Avoid bombs • 5 Lives</p>
                 </div>
-                <div class="game-card" onclick="startGame('hanoi')">
+                <div class="game-card" data-game="hanoi">
                     <h3>🍩 GAME 3: TOWER OF HANOI</h3>
                     <p>Move 5 rings • 60 seconds • Classic puzzle</p>
                 </div>
-                <div class="game-card" onclick="startGame('wordle')">
+                <div class="game-card" data-game="wordle">
                     <h3>🔤 GAME 4: WORDLE</h3>
                     <p>Guess the word • Unlimited tries • Daily challenge</p>
                 </div>
@@ -181,28 +201,39 @@
 
         <!-- Game Screen -->
         <div id="game-screen">
-            <button id="back-btn" onclick="backToMenu()">← BACK TO MENU</button>
+            <button id="back-btn">← BACK TO MENU</button>
             <canvas id="game-canvas" width="800" height="600"></canvas>
             <div id="game-info"></div>
         </div>
 
         <div class="game-over" id="game-over-screen">
             <div id="game-over-text"></div>
-            <button onclick="restartGame()">PLAY AGAIN</button>
-            <button onclick="backToMenu()" style="background: #f44336; margin-left: 10px;">MENU</button>
+            <button id="play-again-btn">PLAY AGAIN</button>
+            <button id="menu-btn" style="background: #f44336; margin-left: 10px;">MENU</button>
         </div>
     </div>
 
     <script>
+        // DOM Elements
         const canvas = document.getElementById('game-canvas');
         const ctx = canvas.getContext('2d');
         const menu = document.getElementById('menu');
         const gameScreen = document.getElementById('game-screen');
         const gameInfo = document.getElementById('game-info');
         const gameOverScreen = document.getElementById('game-over-screen');
+        const discordStatus = document.getElementById('discord-status');
         
+        // Game State
         let currentGame = null;
         let gameState = {};
+        let gameLoopId = null;
+
+        // Check if running in Discord
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('frame_id') || urlParams.get('instance_id')) {
+            discordStatus.style.display = 'block';
+            console.log('Running in Discord Activity!');
+        }
 
         // ============= GAME 1: BREAKOUT =============
         function initBreakout() {
@@ -670,6 +701,10 @@
             menu.style.display = 'none';
             gameScreen.style.display = 'flex';
 
+            // Force canvas redraw for Discord
+            canvas.width = canvas.width;
+            canvas.height = canvas.height;
+
             if (game === 'breakout') {
                 initBreakout();
             } else if (game === 'asteroids') {
@@ -680,6 +715,10 @@
                 initWordle();
             }
 
+            // Restart game loop
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+            }
             gameLoop();
         }
 
@@ -688,6 +727,12 @@
             gameScreen.style.display = 'none';
             gameOverScreen.style.display = 'none';
             menu.style.display = 'block';
+            
+            // Stop game loop
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+                gameLoopId = null;
+            }
         }
 
         function restartGame() {
@@ -701,6 +746,12 @@
                 <h1>${title}</h1>
                 <p style="font-size: 0.7em; margin-top: 10px;">${subtitle}</p>
             `;
+            
+            // Stop game loop
+            if (gameLoopId) {
+                cancelAnimationFrame(gameLoopId);
+                gameLoopId = null;
+            }
         }
 
         function gameLoop() {
@@ -720,47 +771,61 @@
                 drawWordle();
             }
 
-            requestAnimationFrame(gameLoop);
+            gameLoopId = requestAnimationFrame(gameLoop);
         }
 
-        // ============= CONTROLS =============
-        window.addEventListener('keydown', (e) => {
-            if (currentGame === 'breakout') {
-                if (e.key === 'ArrowLeft') gameState.keys.left = true;
-                if (e.key === 'ArrowRight') gameState.keys.right = true;
-            } else if (currentGame === 'asteroids') {
-                if (e.key === 'ArrowUp') gameState.keys.up = true;
-                if (e.key === 'ArrowDown') gameState.keys.down = true;
-                if (e.key === ' ') gameState.keys.shoot = true;
-            } else if (currentGame === 'wordle') {
-                handleWordleKey(e.key.toUpperCase());
-            }
-        });
+        // ============= EVENT LISTENERS =============
+        document.addEventListener('DOMContentLoaded', function() {
+            // Game card click handlers
+            document.querySelectorAll('.game-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const gameType = this.getAttribute('data-game');
+                    startGame(gameType);
+                });
+            });
+            
+            // Button handlers
+            document.getElementById('back-btn').addEventListener('click', backToMenu);
+            document.getElementById('play-again-btn').addEventListener('click', restartGame);
+            document.getElementById('menu-btn').addEventListener('click', backToMenu);
+            
+            // Keyboard controls
+            window.addEventListener('keydown', (e) => {
+                if (currentGame === 'breakout') {
+                    if (e.key === 'ArrowLeft') gameState.keys.left = true;
+                    if (e.key === 'ArrowRight') gameState.keys.right = true;
+                } else if (currentGame === 'asteroids') {
+                    if (e.key === 'ArrowUp') gameState.keys.up = true;
+                    if (e.key === 'ArrowDown') gameState.keys.down = true;
+                    if (e.key === ' ') {
+                        gameState.keys.shoot = true;
+                        e.preventDefault(); // Prevent scrolling
+                    }
+                } else if (currentGame === 'wordle') {
+                    handleWordleKey(e.key.toUpperCase());
+                }
+            });
 
-        window.addEventListener('keyup', (e) => {
-            if (currentGame === 'breakout') {
-                if (e.key === 'ArrowLeft') gameState.keys.left = false;
-                if (e.key === 'ArrowRight') gameState.keys.right = false;
-            } else if (currentGame === 'asteroids') {
-                if (e.key === 'ArrowUp') gameState.keys.up = false;
-                if (e.key === 'ArrowDown') gameState.keys.down = false;
-            }
-        });
+            window.addEventListener('keyup', (e) => {
+                if (currentGame === 'breakout') {
+                    if (e.key === 'ArrowLeft') gameState.keys.left = false;
+                    if (e.key === 'ArrowRight') gameState.keys.right = false;
+                } else if (currentGame === 'asteroids') {
+                    if (e.key === 'ArrowUp') gameState.keys.up = false;
+                    if (e.key === 'ArrowDown') gameState.keys.down = false;
+                }
+            });
 
-        canvas.addEventListener('click', (e) => {
-            if (currentGame === 'hanoi') {
-                const rect = canvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                clickHanoi(x, y);
-            }
+            // Hanoi click handler
+            canvas.addEventListener('click', (e) => {
+                if (currentGame === 'hanoi') {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    clickHanoi(x, y);
+                }
+            });
         });
-
-        // Check if in Discord
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('frame_id') || urlParams.get('instance_id')) {
-            console.log('Running in Discord Activity!');
-        }
     </script>
 </body>
 </html>
