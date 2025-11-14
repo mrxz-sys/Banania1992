@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prodigy 2.6 - Hacking Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #game-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #menu {
+            text-align: center;
+            color: white;
+        }
+        
+        #menu h1 {
+            font-size: 3em;
+            text-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        #menu h2 {
+            font-size: 1.8em;
+            color: #ffd700;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .game-card {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
+            padding: 20px 40px;
+            margin: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-block;
+            min-width: 300px;
+        }
+        
+        .game-card:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .game-card h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        
+        .game-card p {
+            font-size: 0.9em;
+            color: #ddd;
+        }
+        
+        #game-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #game-canvas {
+            border: 3px solid #ffd700;
+            background: #000;
+            margin: 10px;
+        }
+        
+        #game-info {
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.3em;
+            margin: 10px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+        
+        #back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,0,0,0.8);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        
+        #back-btn:hover {
+            background: rgba(255,0,0,1);
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            font-size: 2em;
+            z-index: 999;
+            display: none;
+        }
+
+        .game-over button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 0.8em;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Main Menu -->
+        <div id="menu">
+            <h1>🎮 PRODIGY 2.6 🎮</h1>
+            <h2>HACKING SIMULATOR</h2>
+            <div style="margin-top: 40px;">
+                <div class="game-card" onclick="startGame('breakout')">
+                    <h3>🧱 GAME 1: BREAKOUT</h3>
+                    <p>Break all blocks • 3 Lives • Classic arcade action</p>
+                </div>
+                <div class="game-card" onclick="startGame('asteroids')">
+                    <h3>🚀 GAME 2: SPACE SHOOTER</h3>
+                    <p>Destroy asteroids • Avoid bombs • 5 Lives</p>
+                </div>
+                <div class="game-card" onclick="startGame('hanoi')">
+                    <h3>🍩 GAME 3: TOWER OF HANOI</h3>
+                    <p>Move 5 rings • 60 seconds • Classic puzzle</p>
+                </div>
+                <div class="game-card" onclick="startGame('wordle')">
+                    <h3>🔤 GAME 4: WORDLE</h3>
+                    <p>Guess the word • Unlimited tries • Daily challenge</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen">
+            <button id="back-btn" onclick="backToMenu()">← BACK TO MENU</button>
+            <canvas id="game-canvas" width="800" height="600"></canvas>
+            <div id="game-info"></div>
+        </div>
+
+        <div class="game-over" id="game-over-screen">
+            <div id="game-over-text"></div>
+            <button onclick="restartGame()">PLAY AGAIN</button>
+            <button onclick="backToMenu()" style="background: #f44336; margin-left: 10px;">MENU</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const menu = document.getElementById('menu');
+        const gameScreen = document.getElementById('game-screen');
+        const gameInfo = document.getElementById('game-info');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        
+        let currentGame = null;
+        let gameState = {};
+
+        // ============= GAME 1: BREAKOUT =============
+        function initBreakout() {
+            gameState = {
+                paddle: { x: 350, y: 550, width: 100, height: 15, speed: 8 },
+                ball: { x: 400, y: 300, vx: 4, vy: -4, radius: 8 },
+                bricks: [],
+                lives: 3,
+                score: 0,
+                keys: { left: false, right: false }
+            };
+
+            // Create bricks (8 rows x 10 columns)
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 10; col++) {
+                    gameState.bricks.push({
+                        x: col * 80 + 5,
+                        y: row * 30 + 50,
+                        width: 75,
+                        height: 25,
+                        alive: true
+                    });
+                }
+            }
+        }
+
+        function updateBreakout() {
+            const { paddle, ball, bricks } = gameState;
+
+            // Paddle movement
+            if (gameState.keys.left && paddle.x > 0) paddle.x -= paddle.speed;
+            if (gameState.keys.right && paddle.x < 800 - paddle.width) paddle.x += paddle.speed;
+
+            // Ball movement
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // Wall collision
+            if (ball.x - ball.radius < 0 || ball.x + ball.radius > 800) ball.vx *= -1;
+            if (ball.y - ball.radius < 0) ball.vy *= -1;
+
+            // Paddle collision
+            if (ball.y + ball.radius > paddle.y && 
+                ball.x > paddle.x && ball.x < paddle.x + paddle.width &&
+                ball.vy > 0) {
+                ball.vy *= -1;
+                // Add angle based on hit position
+                const hitPos = (ball.x - paddle.x) / paddle.width;
+                ball.vx = (hitPos - 0.5) * 10;
+            }
+
+            // Brick collision
+            for (let brick of bricks) {
+                if (!brick.alive) continue;
+                if (ball.x + ball.radius > brick.x && ball.x - ball.radius < brick.x + brick.width &&
+                    ball.y + ball.radius > brick.y && ball.y - ball.radius < brick.y + brick.height) {
+                    brick.alive = false;
+                    ball.vy *= -1;
+                    gameState.score += 10;
+                }
+            }
+
+            // Ball falls
+            if (ball.y > 600) {
+                gameState.lives--;
+                if (gameState.lives <= 0) {
+                    endGame('GAME OVER!', `Score: ${gameState.score}`);
+                } else {
+                    ball.x = 400;
+                    ball.y = 300;
+                    ball.vx = 4;
+                    ball.vy = -4;
+                }
+            }
+
+            // Win condition
+            if (bricks.every(b => !b.alive)) {
+                endGame('YOU WIN!', `Perfect Score: ${gameState.score}`);
+            }
+
+            gameInfo.innerHTML = `Lives: ${'❤️'.repeat(gameState.lives)} | Score: ${gameState.score}`;
+        }
+
+        function drawBreakout() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, 800, 600);
+
+            const { paddle, ball, bricks } = gameState;
+
+            // Draw bricks
+            for (let brick of bricks) {
+                if (brick.alive) {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
+                    ctx.strokeStyle = '#333';
+                    ctx.strokeRect(brick.x, brick.y, brick.width, brick.height);
+                }
+            }
+
+            // Draw paddle
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+
+            // Draw ball
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ============= GAME 2: SPACE SHOOTER =============
+        function initAsteroids() {
+            gameState = {
+                ship: { y: 300, speed: 6 },
+                asteroids: [],
+                bullets: [],
+                ammo: 20,
+                lives: 5,
+                score: 0,
+                spawnTimer: 0,
+                keys: { up: false, down: false, shoot: false }
+            };
+        }
+
+        function updateAsteroids() {
+            const { ship, asteroids, bullets } = gameState;
+
+            // Ship movement
+            if (gameState.keys.up && ship.y > 20) ship.y -= ship.speed;
+            if (gameState.keys.down && ship.y < 580) ship.y += ship.speed;
+
+            // Shooting
+            if (gameState.keys.shoot && gameState.ammo > 0) {
+                bullets.push({ x: 80, y: ship.y });
+                gameState.ammo--;
+                gameState.keys.shoot = false; // Prevent holding
+            }
+
+            // Spawn asteroids
+            gameState.spawnTimer++;
+            if (gameState.spawnTimer > 60) {
+                gameState.spawnTimer = 0;
+                const isBomb = Math.random() < 0.15;
+                asteroids.push({
+                    x: 800,
+                    y: Math.random() * 560 + 20,
+                    speed: Math.random() * 3 + 2,
+                    isBomb: isBomb,
+                    size: 20
+                });
+            }
+
+            // Update bullets
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].x += 10;
+                if (bullets[i].x > 800) bullets.splice(i, 1);
+            }
+
+            // Update asteroids
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                asteroids[i].x -= asteroids[i].speed;
+                
+                // Check bullet collision
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    const dx = asteroids[i].x - bullets[j].x;
+                    const dy = asteroids[i].y - bullets[j].y;
+                    if (Math.sqrt(dx*dx + dy*dy) < 20) {
+                        if (asteroids[i].isBomb) {
+                            // Bomb hit
+                            const bombDist = Math.abs(ship.y - asteroids[i].y);
+                            if (bombDist < 100) {
+                                gameState.lives -= 2;
+                            }
+                        } else {
+                            // Asteroid destroyed
+                            gameState.ammo += 2;
+                            gameState.score += 10;
+                        }
+                        asteroids.splice(i, 1);
+                        bullets.splice(j, 1);
+                        break;
+                    }
+                }
+
+                // Asteroid passed
+                if (asteroids[i] && asteroids[i].x < -30) {
+                    if (!asteroids[i].isBomb) {
+                        gameState.lives--;
+                    }
+                    asteroids.splice(i, 1);
+                }
+            }
+
+            if (gameState.lives <= 0) {
+                endGame('GAME OVER!', `Score: ${gameState.score}`);
+            }
+
+            gameInfo.innerHTML = `Lives: ${'❤️'.repeat(Math.max(0, gameState.lives))} | Ammo: 🔫${gameState.ammo} | Score: ${gameState.score}`;
+        }
+
+        function drawAsteroids() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, 800, 600);
+
+            const { ship, asteroids, bullets } = gameState;
+
+            // Draw ship
+            ctx.fillStyle = '#00ff00';
+            ctx.beginPath();
+            ctx.moveTo(50, ship.y);
+            ctx.lineTo(80, ship.y - 15);
+            ctx.lineTo(80, ship.y + 15);
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw bullets
+            ctx.fillStyle = '#ffff00';
+            for (let bullet of bullets) {
+                ctx.fillRect(bullet.x, bullet.y - 2, 10, 4);
+            }
+
+            // Draw asteroids
+            for (let ast of asteroids) {
+                if (ast.isBomb) {
+                    ctx.fillStyle = '#ffff00';
+                    ctx.font = '30px Arial';
+                    ctx.fillText('💣', ast.x - 15, ast.y + 10);
+                } else {
+                    ctx.fillStyle = '#888';
+                    ctx.beginPath();
+                    ctx.arc(ast.x, ast.y, ast.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // ============= GAME 3: TOWER OF HANOI =============
+        function initHanoi() {
+            gameState = {
+                towers: [
+                    [5, 4, 3, 2, 1], // Tower 1
+                    [],              // Tower 2
+                    []               // Tower 3
+                ],
+                selected: null,
+                moves: 0,
+                timeLeft: 60,
+                startTime: Date.now()
+            };
+        }
+
+        function updateHanoi() {
+            gameState.timeLeft = 60 - Math.floor((Date.now() - gameState.startTime) / 1000);
+            
+            if (gameState.timeLeft <= 0) {
+                endGame('TIME UP!', `Moves: ${gameState.moves}`);
+                return;
+            }
+
+            // Win condition
+            if (gameState.towers[2].length === 5) {
+                endGame('YOU WIN!', `Moves: ${gameState.moves} | Time: ${60 - gameState.timeLeft}s`);
+            }
+
+            gameInfo.innerHTML = `Time: ⏱️${gameState.timeLeft}s | Moves: ${gameState.moves}`;
+        }
+
+        function drawHanoi() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 800, 600);
+
+            const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6'];
+            
+            // Draw towers
+            for (let t = 0; t < 3; t++) {
+                const x = 150 + t * 250;
+                
+                // Tower base
+                ctx.fillStyle = '#555';
+                ctx.fillRect(x - 80, 500, 160, 10);
+                ctx.fillRect(x - 5, 300, 10, 200);
+
+                // Tower number
+                ctx.fillStyle = '#fff';
+                ctx.font = '24px Arial';
+                ctx.fillText(`Tower ${t + 1}`, x - 40, 280);
+
+                // Draw rings
+                const tower = gameState.towers[t];
+                for (let i = 0; i < tower.length; i++) {
+                    const ringSize = tower[i];
+                    const width = ringSize * 25 + 20;
+                    const y = 490 - i * 30;
+                    
+                    ctx.fillStyle = colors[ringSize - 1];
+                    ctx.fillRect(x - width/2, y, width, 25);
+                    ctx.strokeStyle = '#000';
+                    ctx.strokeRect(x - width/2, y, width, 25);
+
+                    // Highlight selected
+                    if (gameState.selected && gameState.selected.tower === t && 
+                        gameState.selected.ring === tower.length - 1) {
+                        ctx.strokeStyle = '#ffff00';
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(x - width/2, y, width, 25);
+                        ctx.lineWidth = 1;
+                    }
+                }
+            }
+
+            // Instructions
+            ctx.fillStyle = '#fff';
+            ctx.font = '18px Arial';
+            ctx.fillText('Click a tower to select, click another to move', 200, 550);
+        }
+
+        function clickHanoi(x, y) {
+            if (y < 300 || y > 500) return;
+
+            let tower = -1;
+            if (x > 70 && x < 230) tower = 0;
+            else if (x > 320 && x < 480) tower = 1;
+            else if (x > 570 && x < 730) tower = 2;
+
+            if (tower === -1) return;
+
+            if (gameState.selected === null) {
+                // Select a ring
+                if (gameState.towers[tower].length > 0) {
+                    gameState.selected = { tower: tower, ring: gameState.towers[tower].length - 1 };
+                }
+            } else {
+                // Try to move
+                const fromTower = gameState.selected.tower;
+                const toTower = tower;
+
+                if (fromTower !== toTower) {
+                    const fromRing = gameState.towers[fromTower][gameState.towers[fromTower].length - 1];
+                    const toRing = gameState.towers[toTower][gameState.towers[toTower].length - 1];
+
+                    // Valid move?
+                    if (!toRing || fromRing < toRing) {
+                        gameState.towers[toTower].push(gameState.towers[fromTower].pop());
+                        gameState.moves++;
+                    }
+                }
+                gameState.selected = null;
+            }
+        }
+
+        // ============= GAME 4: WORDLE =============
+        const WORDS = ['SWIFT', 'REACT', 'CODER', 'SNAKE', 'APPLE', 'BRAIN', 'CLOUD', 'DRONE', 'EAGLE', 'FLAME'];
+        
+        function initWordle() {
+            gameState = {
+                targetWord: WORDS[Math.floor(Math.random() * WORDS.length)],
+                guesses: [],
+                currentGuess: '',
+                gameOver: false
+            };
+            console.log('Target word:', gameState.targetWord); // For testing
+        }
+
+        function updateWordle() {
+            gameInfo.innerHTML = `Guesses: ${gameState.guesses.length} | Current: ${gameState.currentGuess}`;
+        }
+
+        function drawWordle() {
+            ctx.fillStyle = '#121213';
+            ctx.fillRect(0, 0, 800, 600);
+
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 40px Arial';
+            ctx.fillText('WORDLE', 320, 80);
+
+            // Draw guesses
+            for (let i = 0; i < gameState.guesses.length; i++) {
+                const guess = gameState.guesses[i];
+                for (let j = 0; j < 5; j++) {
+                    const x = 200 + j * 80;
+                    const y = 120 + i * 80;
+                    
+                    // Determine color
+                    let color = '#3a3a3c'; // Gray (not in word)
+                    if (guess.result[j] === 'correct') color = '#538d4e'; // Green
+                    else if (guess.result[j] === 'present') color = '#b59f3b'; // Yellow
+
+                    ctx.fillStyle = color;
+                    ctx.fillRect(x, y, 70, 70);
+                    
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 40px Arial';
+                    ctx.fillText(guess.letters[j], x + 20, y + 50);
+                }
+            }
+
+            // Draw current guess
+            if (!gameState.gameOver) {
+                const row = gameState.guesses.length;
+                for (let j = 0; j < 5; j++) {
+                    const x = 200 + j * 80;
+                    const y = 120 + row * 80;
+                    
+                    ctx.strokeStyle = '#3a3a3c';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x, y, 70, 70);
+                    
+                    if (j < gameState.currentGuess.length) {
+                        ctx.fillStyle = '#fff';
+                        ctx.font = 'bold 40px Arial';
+                        ctx.fillText(gameState.currentGuess[j], x + 20, y + 50);
+                    }
+                }
+            }
+
+            // Instructions
+            ctx.fillStyle = '#818384';
+            ctx.font = '16px Arial';
+            ctx.fillText('Type your guess and press ENTER', 250, 560);
+        }
+
+        function handleWordleKey(key) {
+            if (gameState.gameOver) return;
+
+            if (key === 'Backspace') {
+                gameState.currentGuess = gameState.currentGuess.slice(0, -1);
+            } else if (key === 'Enter') {
+                if (gameState.currentGuess.length === 5) {
+                    checkWordleGuess();
+                }
+            } else if (key.length === 1 && /[A-Z]/.test(key) && gameState.currentGuess.length < 5) {
+                gameState.currentGuess += key;
+            }
+        }
+
+        function checkWordleGuess() {
+            const guess = gameState.currentGuess;
+            const target = gameState.targetWord;
+            const result = [];
+            const letters = [];
+
+            for (let i = 0; i < 5; i++) {
+                letters.push(guess[i]);
+                if (guess[i] === target[i]) {
+                    result.push('correct');
+                } else if (target.includes(guess[i])) {
+                    result.push('present');
+                } else {
+                    result.push('absent');
+                }
+            }
+
+            gameState.guesses.push({ letters, result });
+            gameState.currentGuess = '';
+
+            if (guess === target) {
+                gameState.gameOver = true;
+                endGame('YOU WIN!', `Guesses: ${gameState.guesses.length}`);
+            }
+        }
+
+        // ============= GAME MANAGEMENT =============
+        function startGame(game) {
+            currentGame = game;
+            menu.style.display = 'none';
+            gameScreen.style.display = 'flex';
+
+            if (game === 'breakout') {
+                initBreakout();
+            } else if (game === 'asteroids') {
+                initAsteroids();
+            } else if (game === 'hanoi') {
+                initHanoi();
+            } else if (game === 'wordle') {
+                initWordle();
+            }
+
+            gameLoop();
+        }
+
+        function backToMenu() {
+            currentGame = null;
+            gameScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            menu.style.display = 'block';
+        }
+
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            startGame(currentGame);
+        }
+
+        function endGame(title, subtitle) {
+            gameOverScreen.style.display = 'block';
+            document.getElementById('game-over-text').innerHTML = `
+                <h1>${title}</h1>
+                <p style="font-size: 0.7em; margin-top: 10px;">${subtitle}</p>
+            `;
+        }
+
+        function gameLoop() {
+            if (!currentGame) return;
+
+            if (currentGame === 'breakout') {
+                updateBreakout();
+                drawBreakout();
+            } else if (currentGame === 'asteroids') {
+                updateAsteroids();
+                drawAsteroids();
+            } else if (currentGame === 'hanoi') {
+                updateHanoi();
+                drawHanoi();
+            } else if (currentGame === 'wordle') {
+                updateWordle();
+                drawWordle();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ============= CONTROLS =============
+        window.addEventListener('keydown', (e) => {
+            if (currentGame === 'breakout') {
+                if (e.key === 'ArrowLeft') gameState.keys.left = true;
+                if (e.key === 'ArrowRight') gameState.keys.right = true;
+            } else if (currentGame === 'asteroids') {
+                if (e.key === 'ArrowUp') gameState.keys.up = true;
+                if (e.key === 'ArrowDown') gameState.keys.down = true;
+                if (e.key === ' ') gameState.keys.shoot = true;
+            } else if (currentGame === 'wordle') {
+                handleWordleKey(e.key.toUpperCase());
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (currentGame === 'breakout') {
+                if (e.key === 'ArrowLeft') gameState.keys.left = false;
+                if (e.key === 'ArrowRight') gameState.keys.right = false;
+            } else if (currentGame === 'asteroids') {
+                if (e.key === 'ArrowUp') gameState.keys.up = false;
+                if (e.key === 'ArrowDown') gameState.keys.down = false;
+            }
+        });
+
+        canvas.addEventListener('click', (e) => {
+            if (currentGame === 'hanoi') {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                clickHanoi(x, y);
+            }
+        });
+
+        // Check if in Discord
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('frame_id') || urlParams.get('instance_id')) {
+            console.log('Running in Discord Activity!');
+        }
+    </script>
+</body>
+</html>
