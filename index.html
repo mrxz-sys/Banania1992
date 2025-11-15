@@ -549,8 +549,7 @@
             
             updateUI();
         }
-
-   function updateAsteroids() {
+function updateAsteroids() {
     const { ship, asteroids, bullets } = gameState;
 
     // Ship movement
@@ -639,11 +638,11 @@
         if (asteroids[i].x < -30) {
             asteroids.splice(i, 1);
         }
-    }
+    } // ← This closing bracket was missing
 
     // Check win/lose conditions
     if (gameState.lives <= 0) {
-        endGame('GAME OVER!', `Asteroids Destroyed: ${gameState.asteroidsDestroyed}/100`);
+        endGame('GAME OVER!', `Asteroids Destroyed: ${gameState.asteroidsDestroyed}/50`);
     }
     
     if (gameState.asteroidsDestroyed >= gameState.asteroidsToDestroy) {
@@ -651,7 +650,7 @@
     }
 
     updateUI();
-}
+} 
         function drawAsteroids() {
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, 800, 600);
@@ -705,21 +704,21 @@
             updateUI();
         }
 
-        function updateHanoi() {
-            gameState.timeLeft = 60 - Math.floor((Date.now() - gameState.startTime) / 1000);
-            
-            if (gameState.timeLeft <= 0) {
-                endGame('TIME UP!', `Moves: ${gameState.moves}`);
-                return;
-            }
+function updateHanoi() {
+    gameState.timeLeft = 300 - Math.floor((Date.now() - gameState.startTime) / 1000); // Changed from 60 to 300
+    
+    if (gameState.timeLeft <= 0) {
+        endGame('TIME UP!', `Moves: ${gameState.moves}`);
+        return;
+    }
 
-            // Win condition
-            if (gameState.towers[2].length === 5) {
-                endGame('YOU WIN!', `Moves: ${gameState.moves} | Time: ${60 - gameState.timeLeft}s`);
-            }
+    // Win condition
+    if (gameState.towers[2].length === 5) {
+        endGame('YOU WIN!', `Moves: ${gameState.moves} | Time: ${300 - gameState.timeLeft}s`); // Changed from 60 to 300
+    }
 
-            updateUI();
-        }
+    updateUI();
+}
 
         function drawHanoi() {
             ctx.fillStyle = '#1a1a2e';
