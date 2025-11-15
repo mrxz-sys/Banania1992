@@ -775,11 +775,12 @@
             // Instructions
             ctx.fillStyle = '#fff';
             ctx.font = '18px Arial';
-            ctx.fillText('Drag and drop rings between towers', 200, 550);
+            ctx.fillText('Click and drag rings between towers', 200, 550);
         }
 
         function getTowerAt(x, y) {
-            if (y < 300 || y > 500) return -1;
+            // Expanded hit area for easier dropping
+            if (y < 250 || y > 550) return -1;
             
             if (x > 70 && x < 230) return 0;
             else if (x > 320 && x < 480) return 1;
@@ -788,22 +789,40 @@
             return -1;
         }
 
+        function getRingAt(x, y) {
+            for (let t = 0; t < 3; t++) {
+                const tower = gameState.towers[t];
+                if (tower.length === 0) continue;
+                
+                const towerX = 150 + t * 250;
+                const topRingIndex = tower.length - 1;
+                const ringSize = tower[topRingIndex];
+                const width = ringSize * 25 + 20;
+                
+                // Check if click is within the top ring of this tower
+                if (x >= towerX - width/2 && x <= towerX + width/2 &&
+                    y >= 490 - topRingIndex * 30 && y <= 490 - topRingIndex * 30 + 25) {
+                    return { towerIndex: t, ringIndex: topRingIndex };
+                }
+            }
+            return null;
+        }
+
         function startDragHanoi(x, y) {
-            const towerIndex = getTowerAt(x, y);
-            if (towerIndex === -1 || gameState.towers[towerIndex].length === 0) return;
+            const ringInfo = getRingAt(x, y);
+            if (!ringInfo) return;
             
-            // Get the top ring from the tower
-            const ring = gameState.towers[towerIndex][gameState.towers[towerIndex].length - 1];
+            const ring = gameState.towers[ringInfo.towerIndex][ringInfo.ringIndex];
             
             gameState.dragging = {
                 ring: ring,
-                fromTower: towerIndex,
+                fromTower: ringInfo.towerIndex,
                 x: x,
                 y: y
             };
             
             // Remove from tower immediately when dragging starts
-            gameState.towers[towerIndex].pop();
+            gameState.towers[ringInfo.towerIndex].pop();
         }
 
         function dropHanoi(x, y) {
@@ -1134,11 +1153,11 @@
                 settingsMenu.style.display = 'none';
             });
             
-            // Hanoi drag and drop
+            // Improved Hanoi drag and drop
             let isDragging = false;
             
             canvas.addEventListener('mousedown', (e) => {
-                if (currentGame === 'hanoi' && !gameState.dragging) {
+                if (currentGame === 'hanoi') {
                     const rect = canvas.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     const y = e.clientY - rect.top;
@@ -1162,6 +1181,38 @@
                     const y = e.clientY - rect.top;
                     dropHanoi(x, y);
                     isDragging = false;
+                }
+            });
+            
+            // Touch support for mobile devices
+            canvas.addEventListener('touchstart', (e) => {
+                if (currentGame === 'hanoi') {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.touches[0].clientX - rect.left;
+                    const y = e.touches[0].clientY - rect.top;
+                    startDragHanoi(x, y);
+                    isDragging = true;
+                    e.preventDefault();
+                }
+            });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                if (currentGame === 'hanoi' && gameState.dragging && isDragging) {
+                    const rect = canvas.getBoundingClientRect();
+                    gameState.dragging.x = e.touches[0].clientX - rect.left;
+                    gameState.dragging.y = e.touches[0].clientY - rect.top;
+                    e.preventDefault();
+                }
+            });
+            
+            canvas.addEventListener('touchend', (e) => {
+                if (currentGame === 'hanoi' && gameState.dragging && isDragging) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.changedTouches[0].clientX - rect.left;
+                    const y = e.changedTouches[0].clientY - rect.top;
+                    dropHanoi(x, y);
+                    isDragging = false;
+                    e.preventDefault();
                 }
             });
             
