@@ -656,40 +656,95 @@ function updateAsteroids() {
     updateUI();
 }
         function drawAsteroids() {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, 1200, 600);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, 800, 600);
 
-            const { ship, asteroids, bullets } = gameState;
+    const { ship, asteroids, bullets } = gameState;
 
-            // Draw ship
-            ctx.fillStyle = '#00ff00';
+    // Draw ship
+    ctx.fillStyle = '#00ff00';
+    ctx.beginPath();
+    ctx.moveTo(50, ship.y);
+    ctx.lineTo(80, ship.y - 15);
+    ctx.lineTo(80, ship.y + 15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw bullets
+    ctx.fillStyle = '#ffff00';
+    for (let bullet of bullets) {
+        ctx.fillRect(bullet.x, bullet.y - 2, 10, 4);
+    }
+
+    // Draw asteroids with different types
+    for (let ast of asteroids) {
+        if (ast.type === 'bomb') {
+            // Yellow egg-shaped bomb
+            ctx.fillStyle = '#FFD700';
+            ctx.strokeStyle = '#FFA500';
+            ctx.lineWidth = 2;
+            
+            // Draw egg/oval shape
             ctx.beginPath();
-            ctx.moveTo(50, ship.y);
-            ctx.lineTo(80, ship.y - 15);
-            ctx.lineTo(80, ship.y + 15);
+            ctx.ellipse(ast.x, ast.y, ast.size * 0.9, ast.size * 1.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            // Add darker yellow spots for texture
+            ctx.fillStyle = '#FFB700';
+            ctx.beginPath();
+            ctx.arc(ast.x - 5, ast.y - 5, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(ast.x + 6, ast.y + 4, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+        } else {
+            // Irregular rocky asteroid shape
+            ctx.fillStyle = '#888';
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 2;
+            
+            // Create seed for consistent shape per asteroid
+            const seed = ast.x + ast.y;
+            
+            ctx.beginPath();
+            for (let i = 0; i < 10; i++) {
+                const angle = (Math.PI * 2 * i) / 10;
+                // Use seed to make shape consistent but varied
+                const variance = ((seed * (i + 1)) % 100) / 100;
+                const radius = ast.size * (0.7 + variance * 0.3);
+                const px = ast.x + Math.cos(angle) * radius;
+                const py = ast.y + Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
             ctx.closePath();
             ctx.fill();
-
-            // Draw bullets
-            ctx.fillStyle = '#ffff00';
-            for (let bullet of bullets) {
-                ctx.fillRect(bullet.x, bullet.y - 2, 10, 4);
-            }
-
-            // Draw asteroids
-            for (let ast of asteroids) {
-                if (ast.isBomb) {
-                    ctx.fillStyle = '#ffff00';
-                    ctx.font = '30px Arial';
-                    ctx.fillText('💣', ast.x - 15, ast.y + 10);
-                } else {
-                    ctx.fillStyle = '#888';
-                    ctx.beginPath();
-                    ctx.arc(ast.x, ast.y, ast.size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
+            ctx.stroke();
+            
+            // Add darker craters for texture
+            ctx.fillStyle = '#666';
+            ctx.beginPath();
+            ctx.arc(ast.x - 4, ast.y - 3, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(ast.x + 5, ast.y + 2, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Add green center for ammo type
+            if (ast.type === 'ammo') {
+                ctx.fillStyle = '#00ff00';
+                ctx.strokeStyle = '#00cc00';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(ast.x, ast.y, ast.size * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
             }
         }
+    }
+}
 
         // ============= GAME 3: TOWER OF HANOI =============
         function initHanoi() {
