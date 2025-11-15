@@ -550,7 +550,7 @@
             updateUI();
         }
 
-       function updateAsteroids() {
+   function updateAsteroids() {
     const { ship, asteroids, bullets } = gameState;
 
     // Ship movement
@@ -561,7 +561,7 @@
     if (gameState.keys.shoot && gameState.ammo > 0) {
         bullets.push({ x: 80, y: ship.y });
         gameState.ammo--;
-        gameState.keys.shoot = false; // Prevent holding
+        gameState.keys.shoot = false;
     }
 
     // Spawn asteroids
@@ -588,52 +588,58 @@
     for (let i = asteroids.length - 1; i >= 0; i--) {
         asteroids[i].x -= asteroids[i].speed;
         
-       // Check bullet collision
-for (let j = bullets.length - 1; j >= 0; j--) {
-    const dx = asteroids[i].x - bullets[j].x;
-    const dy = asteroids[i].y - bullets[j].y;
-    if (Math.sqrt(dx*dx + dy*dy) < 20) {
-        if (asteroids[i].isBomb) {
-            // Calculate actual distance between bomb and ship
-            const bombToShipDx = asteroids[i].x - 80; // Ship x position
-            const bombToShipDy = asteroids[i].y - ship.y;
-            const actualDistance = Math.sqrt(bombToShipDx*bombToShipDx + bombToShipDy*bombToShipDy);
-            
-            // Damage ONLY if bomb is 10 units or less away from ship (considering both directions)
-            if (actualDistance <= 10) {
-                gameState.lives -= 2;
+        // Check bullet collision
+        for (let j = bullets.length - 1; j >= 0; j--) {
+            const dx = asteroids[i].x - bullets[j].x;
+            const dy = asteroids[i].y - bullets[j].y;
+            if (Math.sqrt(dx*dx + dy*dy) < 20) {
+                if (asteroids[i].isBomb) {
+                    // Calculate actual distance between bomb and ship
+                    const bombToShipDx = asteroids[i].x - 80; // Ship x position
+                    const bombToShipDy = asteroids[i].y - ship.y;
+                    const actualDistance = Math.sqrt(bombToShipDx*bombToShipDx + bombToShipDy*bombToShipDy);
+                    
+                    // Damage ONLY if bomb is 10 units or less away from ship
+                    if (actualDistance <= 10) {
+                        gameState.lives -= 2;
+                    }
+                    // Remove bomb and bullet regardless of distance
+                    asteroids.splice(i, 1);
+                    bullets.splice(j, 1);
+                    break;
+                } else {
+                    // Asteroid destroyed
+                    gameState.ammo += 2;
+                    gameState.asteroidsDestroyed++;
+                    asteroids.splice(i, 1);
+                    bullets.splice(j, 1);
+                    break;
+                }
             }
-            // Remove bomb and bullet regardless of distance
-            asteroids.splice(i, 1);
-            bullets.splice(j, 1);
-            break;
-        } else {
-            // Asteroid destroyed
-            gameState.ammo += 2;
-            gameState.asteroidsDestroyed++;
-            asteroids.splice(i, 1);
-            bullets.splice(j, 1);
-            break;
         }
-    }
-}
 
         // If asteroid was removed by bullet collision, skip further checks
         if (!asteroids[i]) continue;
 
-     // CASE 1: Direct collision with ship - check actual distance
-if (asteroids[i].isBomb) {
-    const bombToShipDx = asteroids[i].x - 80;
-    const bombToShipDy = asteroids[i].y - ship.y;
-    const actualDistance = Math.sqrt(bombToShipDx*bombToShipDx + bombToShipDy*bombToShipDy);
-    
-    // Damage if bomb is within 10 units of ship
-    if (actualDistance <= 10) {
-        gameState.lives -= 2;
-        asteroids.splice(i, 1);
-        continue;
+        // Direct collision with ship - check actual distance
+        if (asteroids[i].isBomb) {
+            const bombToShipDx = asteroids[i].x - 80;
+            const bombToShipDy = asteroids[i].y - ship.y;
+            const actualDistance = Math.sqrt(bombToShipDx*bombToShipDx + bombToShipDy*bombToShipDy);
+            
+            // Damage if bomb is within 10 units of ship
+            if (actualDistance <= 10) {
+                gameState.lives -= 2;
+                asteroids.splice(i, 1);
+                continue;
+            }
+        }
+
+        // Asteroid/Bomb passed - NO DAMAGE when reaching left side
+        if (asteroids[i].x < -30) {
+            asteroids.splice(i, 1);
+        }
     }
-}
 
     // Check win/lose conditions
     if (gameState.lives <= 0) {
