@@ -1383,7 +1383,7 @@ function drawBreakout() {
     if (!gameState.ball.launched) {
         ctx.fillStyle = '#ffff00';
         ctx.font = '20px Arial';
-        ctx.fillText('Press SPACE to launch ball', 500, 300);
+        ctx.fillText('Press SPACE to launch the ball', 460, 400);
     }
 }
 
@@ -10183,21 +10183,38 @@ function drawOsuModeSelection() {
 
         // ============= GAME MANAGEMENT =============
 function startGame(game) {
+    // Stop any running game loop first
+    if (gameLoopId) {
+        cancelAnimationFrame(gameLoopId);
+        gameLoopId = null;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Reset all game state variables
     currentGame = game;
+    gameState = {};
+    currentScene = settings.skipIntros ? 'playing' : 'intro';
+    
+    // Hide any game over screens
+    const gameOverScreen = document.getElementById('game-over-screen');
+    if (gameOverScreen) {
+        gameOverScreen.style.display = 'none';
+    }
+    
+    // Hide menu, show game screen
     menu.style.display = 'none';
     gameScreen.style.display = 'flex';
     document.querySelectorAll('section').forEach(section => {
         section.style.display = 'none';
     });
-    gameState = {}; // Reset game state
-    currentScene = settings.skipIntros ? 'playing' : 'intro';
     
-    // Focus canvas for keyboard input FIRST
+    // Focus canvas for keyboard input
     canvas.focus();
     canvas.setAttribute('tabindex', '0');
     
     console.log('Starting game:', game, 'Canvas focused');
     
+    // Initialize the specific game
     if (game === 'brick-demolisher') {
         initBreakout();
     } else if (game === 'asteroid-hunter') {
@@ -10258,24 +10275,38 @@ function startGame(game) {
         initLockPicking();
     }
     
+    // Start the game loop
     if (gameLoopId) {
         cancelAnimationFrame(gameLoopId);
     }
     gameLoop();
 }
 
-        function backToMenu() {
-            currentGame = null;
-            gameScreen.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            menu.style.display = 'block';
-            
-            // Stop game loop
-            if (gameLoopId) {
-                cancelAnimationFrame(gameLoopId);
-                gameLoopId = null;
-            }
-        }
+      function backToMenu() {
+    // Stop game loop
+    if (gameLoopId) {
+        cancelAnimationFrame(gameLoopId);
+        gameLoopId = null;
+    }
+    
+    // Reset game state
+    currentGame = null;
+    gameState = {};
+    currentScene = 'intro';
+    
+    // Hide game screens, show menu
+    gameScreen.style.display = 'none';
+    const gameOverScreen = document.getElementById('game-over-screen');
+    if (gameOverScreen) {
+        gameOverScreen.style.display = 'none';
+    }
+    menu.style.display = 'block';
+    
+    // Show all sections again
+    document.querySelectorAll('section').forEach(section => {
+        section.style.display = 'block';
+    });
+}
 
 function restartGame() {
     gameOverScreen.style.display = 'none';
@@ -10386,10 +10417,10 @@ function gameLoop() {
         gameLoopId = requestAnimationFrame(gameLoop);
         return;
     }
-    if (currentGame === 'breakout') {
+    if (currentGame === 'brick-demolisher') {
         updateBreakout();
         drawBreakout();
-    } else if (currentGame === 'asteroids') {
+    } else if (currentGame === 'asteroid-hunter') {
         updateAsteroids();
         drawAsteroids();
     } else if (currentGame === 'hanoi') {
