@@ -663,7 +663,7 @@ background: linear-gradient(135deg, #8ce023 0%, #5da817 100%);
     <div class="game-cards-grid">
         <h3 class="section-title">COMIC BOOK STORE HEIST</h3>
 
-        <div class="game-card" data-game="brick-demolisher">
+        <div class="game-card" data-game="breakout">
     <div class="game-card-image">
             <img src="assets/breakout.jpg" alt="Brick Demolisher">
 </div>
@@ -672,7 +672,7 @@ background: linear-gradient(135deg, #8ce023 0%, #5da817 100%);
             <p>Break all blocks • 3 Lives • Classic arcade action</p>
         </div>
 </div>
-        <div class="game-card" data-game="asteroid-hunter">
+        <div class="game-card" data-game="asteroids">
     <div class="game-card-image">
             <img src="assets/asteroid_hunter.jpg" alt="Asteroid Hunter">
 </div>
@@ -10215,9 +10215,9 @@ function startGame(game) {
     console.log('Starting game:', game, 'Canvas focused');
     
     // Initialize the specific game
-    if (game === 'brick-demolisher') {
+    if (game === 'breakout') {
         initBreakout();
-    } else if (game === 'asteroid-hunter') {
+    } else if (game === 'asteroids') {
         initAsteroids();
     } else if (game === 'hanoi') {
         initHanoi();
@@ -10417,10 +10417,10 @@ function gameLoop() {
         gameLoopId = requestAnimationFrame(gameLoop);
         return;
     }
-    if (currentGame === 'brick-demolisher') {
+    if (currentGame === 'breakout') {
         updateBreakout();
         drawBreakout();
-    } else if (currentGame === 'asteroid-hunter') {
+    } else if (currentGame === 'asteroids') {
         updateAsteroids();
         drawAsteroids();
     } else if (currentGame === 'hanoi') {
